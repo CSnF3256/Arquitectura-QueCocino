@@ -1,0 +1,349 @@
+openapi: 3.0.3
+info:
+  title: QueCocino API Gateway
+  version: 1.0.0
+  description: |
+    Contrato REST centralizado del ecosistema QueCocino. Incluye usuarios, despensa, recetas, menú,
+    recomendaciones, notificaciones e integración B2B AS2 simulada.
+servers:
+  - url: http://localhost:8000
+    description: API Gateway local Docker Compose
+  - url: https://api.quecocino.demo
+    description: URL objetivo de despliegue
+externalDocs:
+  description: Publicación en SwaggerHub
+  url: https://app.swaggerhub.com/apis/personal-09e/quecocino-api/1.0.0
+tags:
+  - name: Health
+  - name: Monitoring
+  - name: Usuarios
+  - name: Despensa
+  - name: Recetas
+  - name: Menu
+  - name: Recomendaciones
+  - name: Notificaciones
+  - name: IntegracionAS2
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Verifica API Gateway y servicios internos
+      responses:
+        '200': { description: Estado general del ecosistema }
+  /metrics:
+    get:
+      tags: [Monitoring]
+      summary: Expone métricas Prometheus del API Gateway
+      responses:
+        '200':
+          description: Métricas en formato Prometheus text/plain
+          content:
+            text/plain:
+              schema:
+                type: string
+  /usuarios:
+    get:
+      tags: [Usuarios]
+      summary: Lista usuarios registrados para cambiar de perfil en el frontend
+      responses:
+        '200':
+          description: Lista de usuarios
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Usuario' }
+    post:
+      tags: [Usuarios]
+      summary: Crea usuario básico
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UsuarioCreate' }
+      responses:
+        '200':
+          description: Usuario creado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Usuario' }
+  /usuarios/{id}:
+    get:
+      tags: [Usuarios]
+      summary: Obtiene usuario por id
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: Usuario encontrado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Usuario' }
+        '404': { description: Usuario no existe }
+  /usuarios/{id}/preferencias:
+    put:
+      tags: [Usuarios]
+      summary: Actualiza preferencias de usuario e invalida caché
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UsuarioCreate' }
+      responses:
+        '200':
+          description: Preferencias actualizadas
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EstadoOperacion' }
+  /despensa/items:
+    post:
+      tags: [Despensa]
+      summary: Registra ingrediente disponible
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ItemDespensaCreate' }
+      responses:
+        '200':
+          description: Ingrediente creado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ItemDespensa' }
+  /despensa/usuarios/{id}:
+    get:
+      tags: [Despensa]
+      summary: Lista despensa del usuario
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: Lista de ingredientes, con estado de caché
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cache: { type: string, example: HIT }
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/ItemDespensa' }
+  /recetas:
+    get:
+      tags: [Recetas]
+      summary: Consulta catálogo base de recetas
+      responses:
+        '200':
+          description: Lista de recetas
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Receta' }
+  /menu/recomendacion:
+    post:
+      tags: [Menu]
+      summary: Solicita recomendación diaria y publica evento en RabbitMQ
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecomendacionRequest' }
+      responses:
+        '200':
+          description: Solicitud aceptada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecomendacionPendiente' }
+  /recomendaciones/{request_id}:
+    get:
+      tags: [Recomendaciones]
+      summary: Consulta estado de recomendación
+      parameters:
+        - name: request_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Estado de recomendación }
+  /notificaciones:
+    get:
+      tags: [Notificaciones]
+      summary: Lista notificaciones generadas
+      responses:
+        '200':
+          description: Notificaciones
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Notificacion' }
+  /notificaciones/test:
+    post:
+      tags: [Notificaciones]
+      summary: Simula envío de notificación
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                usuario_id: { type: integer, example: 1 }
+                mensaje: { type: string, example: Receta lista para cocinar }
+      responses:
+        '200': { description: Notificación registrada }
+  /as2/inbound:
+    post:
+      tags: [IntegracionAS2]
+      summary: Recibe catálogo de proveedor mediante AS2 simulado
+      parameters:
+        - name: AS2-From
+          in: header
+          required: true
+          schema: { type: string, example: SUP-001 }
+        - name: AS2-To
+          in: header
+          required: true
+          schema: { type: string, example: QUECOCINO }
+        - name: Message-ID
+          in: header
+          required: false
+          schema: { type: string, example: SUP-001-20260630-0001 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AS2CatalogMessage' }
+      responses:
+        '202':
+          description: MDN simulado generado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MDNResponse' }
+  /as2/messages/{message_id}:
+    get:
+      tags: [IntegracionAS2]
+      summary: Consulta estado de mensaje AS2
+      parameters:
+        - name: message_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Estado del mensaje AS2 }
+  /catalog/canonical:
+    get:
+      tags: [IntegracionAS2]
+      summary: Consulta catálogo normalizado de proveedores
+      responses:
+        '200':
+          description: Catálogo canónico vigente
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/CatalogItem' }
+components:
+  parameters:
+    UserId:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, example: 1 }
+  schemas:
+    UsuarioCreate:
+      type: object
+      required: [nombre, email]
+      properties:
+        nombre: { type: string, example: Ana García }
+        email: { type: string, format: email, example: ana@demo.com }
+        tipo_dieta: { type: string, example: normal }
+        alergias: { type: string, example: '' }
+        tiempo_disponible: { type: integer, example: 30 }
+        presupuesto: { type: number, example: 5.0 }
+    Usuario:
+      allOf:
+        - $ref: '#/components/schemas/UsuarioCreate'
+        - type: object
+          properties:
+            id: { type: integer, example: 1 }
+            cache: { type: string, example: HIT }
+    ItemDespensaCreate:
+      type: object
+      required: [usuario_id, nombre]
+      properties:
+        usuario_id: { type: integer, example: 1 }
+        nombre: { type: string, example: arroz }
+        cantidad: { type: number, example: 1 }
+        unidad: { type: string, example: kg }
+        fecha_vencimiento: { type: string, format: date, example: '2026-07-01' }
+    ItemDespensa:
+      allOf:
+        - $ref: '#/components/schemas/ItemDespensaCreate'
+        - type: object
+          properties:
+            id: { type: integer, example: 10 }
+    Receta:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        nombre: { type: string, example: Arroz con pollo }
+        descripcion: { type: string, example: Plato casero con arroz, pollo y verduras. }
+        tiempo: { type: integer, example: 30 }
+        dificultad: { type: string, example: fácil }
+        costo_estimado: { type: number, example: 4.5 }
+    RecomendacionRequest:
+      type: object
+      required: [usuario_id]
+      properties:
+        usuario_id: { type: integer, example: 1 }
+    RecomendacionPendiente:
+      type: object
+      properties:
+        request_id: { type: string, example: rec-1-1710000000 }
+        estado: { type: string, example: PENDIENTE }
+    EstadoOperacion:
+      type: object
+      properties:
+        estado: { type: string, example: preferencias actualizadas }
+        usuario_id: { type: integer, example: 1 }
+        cache: { type: string, example: INVALIDATED }
+    Notificacion:
+      type: object
+      properties:
+        usuario_id: { type: integer, example: 1 }
+        tipo: { type: string, example: RECOMENDACION_GENERADA }
+        mensaje: { type: string, example: Te recomendamos arroz con pollo }
+    AS2CatalogMessage:
+      type: object
+      required: [supplierId, messageType, items]
+      properties:
+        supplierId: { type: string, example: SUP-001 }
+        messageType: { type: string, example: CATALOG_UPDATE }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/CatalogItem' }
+    CatalogItem:
+      type: object
+      required: [externalProductCode, canonicalIngredient]
+      properties:
+        externalProductCode: { type: string, example: ARZ-LG-001 }
+        canonicalIngredient: { type: string, example: arroz }
+        category: { type: string, example: cereal }
+        unit: { type: string, example: kg }
+        price: { type: number, example: 1.25 }
+        stock: { type: number, example: 500 }
+        validFrom: { type: string, format: date, example: '2026-06-24' }
+        validTo: { type: string, format: date, example: '2026-07-30' }
+    MDNResponse:
+      type: object
+      properties:
+        mdn: { type: string, example: PROCESSED }
+        as2From: { type: string, example: SUP-001 }
+        as2To: { type: string, example: QUECOCINO }
+        messageId: { type: string, example: SUP-001-20260630-0001 }
+        checksum: { type: string }
+        items: { type: integer, example: 2 }

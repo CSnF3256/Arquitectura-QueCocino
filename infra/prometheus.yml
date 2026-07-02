@@ -1,0 +1,29 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'quecocino-api-gateway'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['api-gateway:8000']
+  - job_name: 'quecocino-usuario'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['servicio-usuario:8001']
+  - job_name: 'quecocino-recetas'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['servicio-recetas:8002']
+  - job_name: 'quecocino-menu'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['servicio-menu:8003']
+  - job_name: 'quecocino-notificaciones'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['servicio-notificaciones:8004']
+  - job_name: 'quecocino-as2-adapter'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['as2-adapter:8090']

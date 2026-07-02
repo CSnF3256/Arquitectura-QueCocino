@@ -1,0 +1,125 @@
+services:
+  postgres-usuarios:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: quecocino_usuarios
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+    ports: ["5433:5432"]
+    volumes:
+      - usuarios_data:/var/lib/postgresql/data
+      - ./sql/usuarios.sql:/docker-entrypoint-initdb.d/01-usuarios.sql
+
+  postgres-recetas:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: quecocino_recetas
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+    ports: ["5434:5432"]
+    volumes:
+      - recetas_data:/var/lib/postgresql/data
+      - ./sql/recetas.sql:/docker-entrypoint-initdb.d/01-recetas.sql
+
+  postgres-integracion:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: quecocino_integracion
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+    ports: ["5435:5432"]
+    volumes:
+      - integracion_data:/var/lib/postgresql/data
+      - ./sql/integracion.sql:/docker-entrypoint-initdb.d/01-integracion.sql
+
+  redis:
+    image: redis:7
+    ports: ["6379:6379"]
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports: ["5672:5672", "15672:15672"]
+
+  servicio-usuario:
+    build: ../servicio-usuario
+    environment:
+      DB_HOST: postgres-usuarios
+      DB_NAME: quecocino_usuarios
+      DB_USER: admin
+      DB_PASSWORD: admin123
+      REDIS_HOST: redis
+    depends_on: [postgres-usuarios, redis]
+    ports: ["8001:8001"]
+
+  servicio-recetas:
+    build: ../servicio-recetas
+    environment:
+      DB_HOST: postgres-recetas
+      DB_NAME: quecocino_recetas
+      DB_USER: admin
+      DB_PASSWORD: admin123
+    depends_on: [postgres-recetas]
+    ports: ["8002:8002"]
+
+  servicio-menu:
+    build: ../servicio-menu
+    environment:
+      USUARIO_URL: http://servicio-usuario:8001
+      RECETAS_URL: http://servicio-recetas:8002
+      RABBITMQ_HOST: rabbitmq
+      REDIS_HOST: redis
+    depends_on: [servicio-usuario, servicio-recetas, rabbitmq, redis]
+    ports: ["8003:8003"]
+
+  lambda-recomendador:
+    build: ../lambda-recomendador
+    environment:
+      RABBITMQ_HOST: rabbitmq
+    depends_on: [rabbitmq]
+
+  servicio-notificaciones:
+    build: ../servicio-notificaciones
+    environment:
+      RABBITMQ_HOST: rabbitmq
+    depends_on: [rabbitmq]
+    ports: ["8004:8004"]
+
+  as2-adapter:
+    build: ../as2-adapter
+    environment:
+      DB_HOST: postgres-integracion
+      DB_NAME: quecocino_integracion
+      DB_USER: admin
+      DB_PASSWORD: admin123
+      RABBITMQ_HOST: rabbitmq
+      AS2_SYSTEM_ID: QUECOCINO
+    depends_on: [postgres-integracion, rabbitmq]
+    ports: ["8090:8090"]
+
+  api-gateway:
+    build: ../api-gateway
+    environment:
+      USUARIO_URL: http://servicio-usuario:8001
+      RECETAS_URL: http://servicio-recetas:8002
+      MENU_URL: http://servicio-menu:8003
+      NOTIFICACIONES_URL: http://servicio-notificaciones:8004
+      AS2_URL: http://as2-adapter:8090
+    depends_on: [servicio-usuario, servicio-recetas, servicio-menu, servicio-notificaciones, as2-adapter]
+    ports: ["8000:8000"]
+
+  frontend:
+    build: ../frontend
+    depends_on: [api-gateway]
+    ports: ["3000:80"]
+
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports: ["9090:9090"]
+    depends_on: [api-gateway, servicio-usuario, servicio-recetas, servicio-menu, servicio-notificaciones, as2-adapter]
+
+volumes:
+  usuarios_data:
+  recetas_data:
+  integracion_data:

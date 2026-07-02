@@ -1,0 +1,27 @@
+name: CI QueCocino
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validar estructura
+        run: |
+          test -f infra/docker-compose.yml
+          test -f docs/openapi.yaml
+          test -f lambda-recomendador/handler.py
+      - name: Construir imágenes Docker
+        run: docker compose -f infra/docker-compose.yml build
+
+      - name: Levantar servicios y test de health
+        run: |
+          docker compose -f infra/docker-compose.yml up -d --wait || docker compose -f infra/docker-compose.yml up -d
+          sleep 45
+          curl -f http://localhost:8000/health || exit 1
+          curl -f http://localhost:8000/recetas || exit 1
+          curl -f http://localhost:8000/metrics || exit 1
+          docker compose -f infra/docker-compose.yml down
