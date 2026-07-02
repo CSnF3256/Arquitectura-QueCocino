@@ -79,13 +79,6 @@ curl -X POST http://localhost:8000/menu/recomendacion \
 curl http://localhost:8000/notificaciones
 ```
 
-## Evidencias para capturas
-
-- `docker ps` mostrando contenedores.
-- Swagger del gateway: `http://localhost:8000/docs`.
-- RabbitMQ con colas `recommendation.requested` y `recommendation.generated`.
-- Terminal del `lambda-recomendador` procesando eventos.
-- Terminal de `servicio-notificaciones` registrando notificaciones.
 
 
 ## Interfaz web responsive
@@ -135,14 +128,6 @@ En el entorno local académico, la función `lambda-recomendador` se ejecuta com
 Para un despliegue AWS objetivo, RabbitMQ se reemplazaría por SQS y la función se activaría por eventos de cola. El archivo `lambda-recomendador/serverless.yml` sirve como base para ese despliegue.
 
 
-## Correcciones incorporadas en esta versión
-
-1. **SwaggerHub completo**: `docs/openapi.yaml` incluye `requestBody`, schemas y endpoints de usuarios, despensa, menú, notificaciones e integración AS2. URL publicada: https://app.swaggerhub.com/apis/personal-09e/quecocino-api/1.0.0
-2. **Lambda simulada vs AWS objetivo**: en local se mantiene Docker + RabbitMQ para evitar costos; en `lambda-recomendador/serverless.yml` se corrigió el trigger objetivo a SQS.
-3. **Cache-aside real en Redis**: `servicio-usuario` cachea perfil (`user:{id}:profile`) y despensa (`user:{id}:pantry`) con TTL e invalida la caché al actualizar preferencias o despensa.
-4. **AS2 Adapter mínimo**: nuevo microservicio `/as2-adapter` con endpoints `/as2/inbound`, `/as2/messages/{id}` y `/catalog/canonical`.
-5. **Interfaz gourmet responsive**: frontend rediseñado con estética gastronómica, carrusel, categorías, búsqueda, animaciones de ingredientes y navegación inferior mobile.
-
 ## Prueba del AS2 Adapter
 
 ```bash
@@ -156,30 +141,9 @@ curl http://localhost:8000/catalog/canonical
 ```
 
 
-## Mejoras finales de entrega
-
-Esta versión incorpora las correcciones finales para una entrega más completa:
-
-1. **Limpieza del paquete**: se eliminaron carpetas `__pycache__` y archivos `.pyc` antes de comprimir.
-2. **Catálogo ampliado**: `infra/sql/recetas.sql` ahora incluye 9 recetas semilla con ingredientes asociados para que el carrusel, el endpoint `/recetas` y el scoring de la Lambda tengan más datos.
-3. **CI/CD con prueba funcional**: `.github/workflows/ci.yml` construye imágenes, levanta los servicios y valida `/health`, `/recetas` y `/metrics`.
-4. **Monitoreo con Prometheus**: `infra/prometheus.yml` y el servicio `prometheus` en Docker Compose scrapean métricas de FastAPI en `/metrics`.
-
 URL de monitoreo local:
 
 ```text
 http://localhost:9090
 ```
 
-## Rediseño frontend temático
-
-La versión final mantiene la arquitectura principal, pero mejora la experiencia visual del usuario:
-
-- **Inicio:** pantalla principal gourmet con buscador, recetas destacadas y acceso rápido.
-- **Mi Refri:** despensa representada como una refrigeradora interactiva que se abre y organiza ingredientes por zonas.
-- **Mi Chef:** perfil de usuario con avatar personalizable y preferencias culinarias.
-- **Recetario:** catálogo presentado como libro de cocina abierto.
-- **Recomendar:** pantalla separada para la recomendación diaria procesada con RabbitMQ + Lambda simulada.
-- **Sistema:** evidencia técnica separada para Swagger, SwaggerHub, RabbitMQ, Prometheus y AS2 Adapter.
-
-Este cambio no modifica la arquitectura base ni los microservicios; solo reorganiza el frontend para que la demo se vea como una aplicación web/mobile real y no como un dashboard técnico.
