@@ -27,7 +27,19 @@ export const mockRecipes = [
   {id: 5, nombre: 'Sopa de verduras', descripcion: 'Reconfortante y perfecta para aprovechar vegetales.', tiempo: 35, costo_estimado: 2.6, dificultad: 'facil', ingredientes: ['papa', 'zanahoria', 'cebolla', 'brócoli'], etiquetas: ['saludable']},
   {id: 6, nombre: 'Pollo al curry', descripcion: 'Pollo especiado con base cremosa.', tiempo: 40, costo_estimado: 5.6, dificultad: 'media', ingredientes: ['pollo', 'leche', 'cebolla', 'arroz'], etiquetas: ['gourmet']},
   {id: 7, nombre: 'Crema de brócoli', descripcion: 'Cremosa y suave para una cena ligera.', tiempo: 28, costo_estimado: 3.7, dificultad: 'facil', ingredientes: ['brócoli', 'leche', 'queso', 'cebolla'], etiquetas: ['saludable']},
-  {id: 8, nombre: 'Lomo saltado', descripcion: 'Inspiración casera con papas y vegetales.', tiempo: 45, costo_estimado: 6.5, dificultad: 'media', ingredientes: ['papa', 'tomate', 'cebolla'], etiquetas: ['para hoy']}
+  {id: 8, nombre: 'Lomo saltado', descripcion: 'Inspiración casera con papas y vegetales.', tiempo: 45, costo_estimado: 6.5, dificultad: 'media', ingredientes: ['carne', 'papa', 'tomate', 'cebolla'], etiquetas: ['para hoy']},
+  {id: 9, nombre: 'Bowl vegetariano de arroz', descripcion: 'Arroz, brócoli y zanahoria con toque fresco.', tiempo: 22, costo_estimado: 3.2, dificultad: 'facil', ingredientes: ['arroz', 'brócoli', 'zanahoria', 'tomate'], etiquetas: ['saludable', 'vegetariano']},
+  {id: 10, nombre: 'Shakshuka casera', descripcion: 'Huevos cocidos en salsa de tomate y cebolla.', tiempo: 24, costo_estimado: 3.6, dificultad: 'media', ingredientes: ['huevo', 'tomate', 'cebolla'], etiquetas: ['rápida', 'para hoy']},
+  {id: 11, nombre: 'Papas doradas con queso', descripcion: 'Guarnición contundente con papa y queso.', tiempo: 32, costo_estimado: 2.9, dificultad: 'facil', ingredientes: ['papa', 'queso', 'cebolla'], etiquetas: ['económica']},
+  {id: 12, nombre: 'Arroz salteado con huevo', descripcion: 'Salteado rápido para aprovechar arroz y verduras.', tiempo: 18, costo_estimado: 2.7, dificultad: 'facil', ingredientes: ['arroz', 'huevo', 'zanahoria', 'cebolla'], etiquetas: ['rápida', 'económica']},
+  {id: 13, nombre: 'Pasta con brócoli', descripcion: 'Pasta ligera con brócoli y ajo.', tiempo: 23, costo_estimado: 3.3, dificultad: 'facil', ingredientes: ['pasta', 'brócoli', 'ajo'], etiquetas: ['vegetariano', 'rápida']},
+  {id: 14, nombre: 'Tomates rellenos de arroz', descripcion: 'Tomates horneados con arroz especiado.', tiempo: 38, costo_estimado: 3.1, dificultad: 'media', ingredientes: ['tomate', 'arroz', 'cebolla'], etiquetas: ['vegetariano', 'saludable']},
+  {id: 15, nombre: 'Ensalada tibia de papa', descripcion: 'Papa, huevo y zanahoria en versión casera.', tiempo: 26, costo_estimado: 3.0, dificultad: 'facil', ingredientes: ['papa', 'huevo', 'zanahoria'], etiquetas: ['económica']},
+  {id: 16, nombre: 'Pollo con papas al horno', descripcion: 'Receta familiar de bandeja con verduras.', tiempo: 50, costo_estimado: 5.8, dificultad: 'media', ingredientes: ['pollo', 'papa', 'cebolla', 'zanahoria'], etiquetas: ['familiar']},
+  {id: 17, nombre: 'Sopa de tomate', descripcion: 'Sopa suave y aromática con tomate y cebolla.', tiempo: 25, costo_estimado: 2.4, dificultad: 'facil', ingredientes: ['tomate', 'cebolla', 'ajo'], etiquetas: ['saludable', 'económica']},
+  {id: 18, nombre: 'Arepitas de queso', descripcion: 'Bocados rápidos con queso para acompañar.', tiempo: 20, costo_estimado: 3.8, dificultad: 'facil', ingredientes: ['queso', 'huevo'], etiquetas: ['rápida']},
+  {id: 19, nombre: 'Curry vegetal', descripcion: 'Verduras con arroz y especias suaves.', tiempo: 35, costo_estimado: 4.2, dificultad: 'media', ingredientes: ['arroz', 'brócoli', 'zanahoria', 'cebolla'], etiquetas: ['vegetariano', 'saludable']},
+  {id: 20, nombre: 'Frittata de verduras', descripcion: 'Huevos al horno con verduras disponibles.', tiempo: 30, costo_estimado: 3.5, dificultad: 'facil', ingredientes: ['huevo', 'tomate', 'brócoli', 'cebolla'], etiquetas: ['saludable']}
 ];
 
 export const serviceMap = [

@@ -15,6 +15,7 @@ export function useQueCocino() {
   const [loading, setLoading] = useState({});
   const [toast, setToast] = useState('');
   const [recommendation, setRecommendation] = useState(null);
+  const [recommendationSeed, setRecommendationSeed] = useState(0);
 
   const activeUser = useMemo(
     () => users.find((user) => String(user.id) === String(activeUserId)) || users[0] || null,
@@ -150,6 +151,8 @@ export function useQueCocino() {
       setActiveView('usuarios');
       return;
     }
+    const nextSeed = recommendationSeed + 1;
+    setRecommendationSeed(nextSeed);
     setLoading((s) => ({...s, recommendation: true}));
     setRecommendation({estado: 'ANALIZANDO', mensaje: 'Preparando recomendación'});
     try {
@@ -158,8 +161,10 @@ export function useQueCocino() {
       notify('Solicitud enviada al motor de recomendación');
       window.setTimeout(loadNotifications, 3200);
     } catch (error) {
-      const candidates = recipesForUser(recipes.length ? recipes : mockRecipes, activeUser);
-      const recipe = [...candidates].sort((a, b) => recipeMatch(b, ingredients).percent - recipeMatch(a, ingredients).percent)[0] || mockRecipes[0];
+      const candidates = recipesForUser(recipes.length ? recipes : mockRecipes, activeUser)
+        .sort((a, b) => recipeMatch(b, ingredients).percent - recipeMatch(a, ingredients).percent);
+      const shortlist = candidates.slice(0, Math.min(5, candidates.length));
+      const recipe = shortlist[nextSeed % shortlist.length] || candidates[0] || mockRecipes[0];
       setRecommendation({estado: 'DEMO', mensaje: `Hoy te conviene preparar ${recipe.nombre}.`, receta: recipe.nombre});
       notify('Recomendación demo generada');
     } finally {
@@ -181,7 +186,7 @@ export function useQueCocino() {
   return {
     activeView, setActiveView, activeUserId, setActiveUser, activeUser,
     users, ingredients, recipes, notifications, system, loading, toast,
-    recommendation, loadNotifications, requestRecommendation, createUser,
+    recommendation, recommendationSeed, loadNotifications, requestRecommendation, createUser,
     addIngredient, notify, checkHealth
   };
 }

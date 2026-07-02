@@ -8,6 +8,7 @@ const navItems = [
   ['recetario', '📖', 'Recetario'],
   ['recomendacion', '✨', 'Recomendación'],
   ['notificaciones', '🔔', 'Notificaciones'],
+  ['proveedores', '🤝', 'Proveedores AS2'],
   ['sistema', '🧩', 'Sistema']
 ];
 

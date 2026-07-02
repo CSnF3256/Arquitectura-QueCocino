@@ -1,14 +1,24 @@
 import { Button, SectionTitle } from '../components/ui.js';
-import { h, recipeIcon, recipeMatch, recipesForUser } from '../utils.js';
+import { h, ingredientIcon, recipeIcon, recipeMatch, recipesForUser } from '../utils.js';
+
+const {useMemo, useState} = React;
 
 const steps = ['Analizando tu refri', 'Revisando preferencias', 'Comparando recetas', 'Calculando mejor opción', 'Recomendación lista'];
 
 export function RecommendationPage({state}) {
-  const best = recipesForUser(state.recipes, state.activeUser)
-    .sort((a, b) => recipeMatch(b, state.ingredients).percent - recipeMatch(a, state.ingredients).percent)[0];
+  const [showShopping, setShowShopping] = useState(false);
+  const candidates = useMemo(() => recipesForUser(state.recipes, state.activeUser)
+    .sort((a, b) => recipeMatch(b, state.ingredients).percent - recipeMatch(a, state.ingredients).percent), [state.recipes, state.activeUser, state.ingredients, state.recommendationSeed]);
+  const shortlist = candidates.slice(0, Math.min(6, candidates.length));
+  const rotated = shortlist[state.recommendationSeed % (shortlist.length || 1)] || candidates[0];
+  const fromBackend = state.recommendation?.receta
+    ? candidates.find((recipe) => recipe.nombre === state.recommendation.receta)
+    : null;
+  const best = fromBackend || rotated;
   const match = best ? recipeMatch(best, state.ingredients) : {percent: 0, owned: [], missing: []};
   const busy = state.loading.recommendation || state.recommendation?.estado === 'ANALIZANDO';
   const pending = state.recommendation?.estado === 'PENDIENTE';
+  const shoppingItems = match.missing;
 
   return h('section', {className: 'page recommendation-page'},
     h(SectionTitle, {eyebrow: 'paso 5', title: 'Recomendación inteligente'}, 'La interfaz visualiza el proceso; la decisión real se solicita al Servicio Menú mediante el API Gateway.'),
@@ -35,12 +45,24 @@ export function RecommendationPage({state}) {
         ),
         h('div', {className: 'owned-missing'},
           h('div', null, h('b', null, 'Ya tienes'), h('small', null, match.owned.length ? match.owned.join(', ') : 'por confirmar')),
-          h('div', null, h('b', null, 'Faltantes'), h('small', null, match.missing.length ? match.missing.join(', ') : 'sin faltantes detectados'))
+          h('div', null, h('b', null, 'Faltantes'), h('small', null, shoppingItems.length ? shoppingItems.join(', ') : 'sin faltantes detectados'))
         ),
         h('div', {className: 'hero-actions'},
-          h(Button, {variant: 'soft', onClick: () => state.notify('Lista de compras preparada visualmente')}, 'Ver lista de compras'),
-          h(Button, {variant: 'soft', onClick: state.requestRecommendation}, 'Pedir otra recomendación')
-        )
+          h(Button, {variant: 'soft', onClick: () => setShowShopping(!showShopping)}, showShopping ? 'Ocultar lista de compras' : 'Ver lista de compras'),
+          h(Button, {variant: 'soft', onClick: state.requestRecommendation}, 'Pedir otra recomendación'),
+          h(Button, {variant: 'soft', onClick: () => state.setActiveView('proveedores')}, 'Buscar proveedores AS2')
+        ),
+        showShopping ? h('div', {className: 'shopping-list'},
+          h('h3', null, 'Lista de compras sugerida'),
+          shoppingItems.length ? shoppingItems.map((item) =>
+            h('article', {key: item, className: 'shopping-item'},
+              h('span', null, ingredientIcon(item)),
+              h('b', null, item),
+              h('small', null, 'buscar en proveedores AS2')
+            )
+          ) : h('p', null, 'No necesitas comprar ingredientes para esta receta.'),
+          shoppingItems.length ? h(Button, {variant: 'soft', onClick: () => state.setActiveView('proveedores')}, 'Ver vendedores para faltantes') : null
+        ) : null
       )
     )
   );

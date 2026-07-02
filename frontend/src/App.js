@@ -7,6 +7,7 @@ import { RecommendationPage } from './pages/RecommendationPage.js';
 import { RecipesPage } from './pages/RecipesPage.js';
 import { SystemPage } from './pages/SystemPage.js';
 import { UsersPage } from './pages/UsersPage.js';
+import { VendorsPage } from './pages/VendorsPage.js';
 import { useQueCocino } from './hooks/useQueCocino.js';
 import { h } from './utils.js';
 
@@ -20,6 +21,7 @@ export function App() {
     recetario: h(RecipesPage, {state}),
     recomendacion: h(RecommendationPage, {state}),
     notificaciones: h(NotificationsPage, {state}),
+    proveedores: h(VendorsPage, {state}),
     sistema: h(SystemPage, {state})
   };
 
