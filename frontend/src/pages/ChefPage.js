@@ -1,16 +1,16 @@
 import { Button, SectionTitle } from '../components/ui.js';
 import { daysUntil, h, ingredientIcon } from '../utils.js';
 
-const {useMemo, useState} = React;
+const {useEffect, useMemo, useState} = React;
 
 export function ChefPage({state}) {
   const user = state.activeUser;
-  const [mood, setMood] = useState('ligero');
-  const [time, setTime] = useState(user?.tiempo_disponible || 30);
-  const [budget, setBudget] = useState(user?.presupuesto || 5);
-  const [useExpiring, setUseExpiring] = useState(true);
-  const [avoidShopping, setAvoidShopping] = useState(true);
-  const [notes, setNotes] = useState('');
+  const [mood, setMood] = useState(state.chefPreferences.mood || 'ligero');
+  const [time, setTime] = useState(state.chefPreferences.time || user?.tiempo_disponible || 30);
+  const [budget, setBudget] = useState(state.chefPreferences.budget || user?.presupuesto || 5);
+  const [useExpiring, setUseExpiring] = useState(state.chefPreferences.useExpiring ?? true);
+  const [avoidShopping, setAvoidShopping] = useState(state.chefPreferences.avoidShopping ?? true);
+  const [notes, setNotes] = useState(state.chefPreferences.notes || '');
 
   const expiring = useMemo(
     () => state.ingredients.filter((item) => daysUntil(item.fecha_vencimiento) <= 4).slice(0, 4),
@@ -23,6 +23,12 @@ export function ChefPage({state}) {
     ['rapido', '⚡', 'Rápido'],
     ['casero', '🍲', 'Casero']
   ];
+
+  const currentPreferences = {mood, time: Number(time), budget: Number(budget), useExpiring, avoidShopping, notes};
+
+  useEffect(() => {
+    state.setChefPreferences(currentPreferences);
+  }, [mood, time, budget, useExpiring, avoidShopping, notes]);
 
   return h('section', {className: 'page chef-page'},
     h(SectionTitle, {eyebrow: 'paso 3', title: 'Mi Chef QueCocino'}, 'No reemplaza tus preferencias de usuario: define la intención de la comida de hoy y luego usa el endpoint real de recomendación.'),
@@ -83,7 +89,7 @@ export function ChefPage({state}) {
           h('li', null, avoidShopping ? 'Minimizar compras' : 'Permitir compras extra')
         ),
         notes ? h('p', {className: 'chef-note'}, notes) : null,
-        h(Button, {onClick: () => { state.setActiveView('recomendacion'); state.requestRecommendation(); }}, 'Solicitar recomendación')
+        h(Button, {onClick: () => { state.setChefPreferences(currentPreferences); state.setActiveView('recomendacion'); state.requestRecommendation(); }}, 'Solicitar recomendación')
       )
     )
   );

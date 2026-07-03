@@ -1,5 +1,5 @@
 import { Button, SectionTitle } from '../components/ui.js';
-import { h, ingredientIcon, recipeIcon, recipeMatch, recipesForUser } from '../utils.js';
+import { daysUntil, h, ingredientIcon, recipeIcon, recipeMatch, recipesForUser, scoreRecipeForChef } from '../utils.js';
 
 const {useMemo, useState} = React;
 
@@ -7,8 +7,10 @@ const steps = ['Analizando tu refri', 'Revisando preferencias', 'Comparando rece
 
 export function RecommendationPage({state}) {
   const [showShopping, setShowShopping] = useState(false);
+  const expiringIngredients = state.ingredients.filter((item) => daysUntil(item.fecha_vencimiento) <= 4);
+  const preferences = {...state.chefPreferences, expiringIngredients};
   const candidates = useMemo(() => recipesForUser(state.recipes, state.activeUser)
-    .sort((a, b) => recipeMatch(b, state.ingredients).percent - recipeMatch(a, state.ingredients).percent), [state.recipes, state.activeUser, state.ingredients, state.recommendationSeed]);
+    .sort((a, b) => scoreRecipeForChef(b, state.ingredients, preferences) - scoreRecipeForChef(a, state.ingredients, preferences)), [state.recipes, state.activeUser, state.ingredients, state.recommendationSeed, state.chefPreferences]);
   const shortlist = candidates.slice(0, Math.min(6, candidates.length));
   const rotated = shortlist[state.recommendationSeed % (shortlist.length || 1)] || candidates[0];
   const fromBackend = state.recommendation?.receta
@@ -41,7 +43,8 @@ export function RecommendationPage({state}) {
         h('div', {className: 'tag-row'},
           h('span', null, `${best?.tiempo || state.activeUser?.tiempo_disponible || 30} min`),
           h('span', null, `$${best?.costo_estimado || state.activeUser?.presupuesto || 0}`),
-          h('span', null, `${match.percent}% match`)
+          h('span', null, `${match.percent}% match`),
+          state.chefPreferences?.mood ? h('span', null, `modo ${state.chefPreferences.mood}`) : null
         ),
         h('div', {className: 'owned-missing'},
           h('div', null, h('b', null, 'Ya tienes'), h('small', null, match.owned.length ? match.owned.join(', ') : 'por confirmar')),

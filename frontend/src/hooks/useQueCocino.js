@@ -1,12 +1,13 @@
 import { api } from '../services/api.js';
 import { mockIngredients, mockRecipes, mockUsers } from '../data/mockData.js';
-import { isRecipeAllowedForUser, normalizeItems, recipeMatch, recipesForUser } from '../utils.js';
+import { daysUntil, isRecipeAllowedForUser, normalizeItems, recipeMatch, recipesForUser, scoreRecipeForChef } from '../utils.js';
 
-const {useEffect, useMemo, useState} = React;
+const {useEffect, useMemo, useRef, useState} = React;
 
 export function useQueCocino() {
   const [activeView, setActiveView] = useState('inicio');
   const [activeUserId, setActiveUserId] = useState(localStorage.getItem('quecocino_usuario_id') || '');
+  const activeUserIdRef = useRef(localStorage.getItem('quecocino_usuario_id') || '');
   const [users, setUsers] = useState([]);
   const [ingredients, setIngredients] = useState([]);
   const [recipes, setRecipes] = useState([]);
@@ -16,6 +17,14 @@ export function useQueCocino() {
   const [toast, setToast] = useState('');
   const [recommendation, setRecommendation] = useState(null);
   const [recommendationSeed, setRecommendationSeed] = useState(0);
+  const [chefPreferences, setChefPreferences] = useState({mood: 'ligero', time: 30, budget: 5, useExpiring: true, avoidShopping: true, notes: ''});
+  const [localPantryByUser, setLocalPantryByUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('quecocino_local_pantry')) || {};
+    } catch (error) {
+      return {};
+    }
+  });
 
   const activeUser = useMemo(
     () => users.find((user) => String(user.id) === String(activeUserId)) || users[0] || null,
@@ -43,6 +52,11 @@ export function useQueCocino() {
     }
   }
 
+  function saveLocalPantry(next) {
+    setLocalPantryByUser(next);
+    localStorage.setItem('quecocino_local_pantry', JSON.stringify(next));
+  }
+
   async function loadIngredients(userId = activeUserId) {
     setLoading((s) => ({...s, ingredients: true}));
     try {
@@ -50,7 +64,8 @@ export function useQueCocino() {
       const data = await api.pantry(userId);
       setIngredients(normalizeItems(data));
     } catch (error) {
-      setIngredients(mockIngredients);
+      const localItems = localPantryByUser[userId] || [];
+      setIngredients(localItems.length ? localItems : (String(userId) === String(mockUsers[0].id) ? mockIngredients : []));
       setSystem((s) => ({...s, fallback: true}));
     } finally {
       setLoading((s) => ({...s, ingredients: false}));
@@ -108,6 +123,7 @@ export function useQueCocino() {
   }
 
   function setActiveUser(id) {
+    activeUserIdRef.current = String(id);
     setActiveUserId(String(id));
     localStorage.setItem('quecocino_usuario_id', String(id));
   }
@@ -116,14 +132,17 @@ export function useQueCocino() {
     setLoading((s) => ({...s, createUser: true}));
     try {
       const created = await api.createUser(payload);
+      const completeUser = {...payload, ...created};
+      setUsers((current) => [completeUser, ...current.filter((user) => String(user.id) !== String(created.id))]);
       setActiveUser(created.id);
-      await loadUsers();
+      await loadIngredients(created.id);
       notify(`Usuario ${created.nombre || created.id} listo para cocinar`);
-      return created;
+      return completeUser;
     } catch (error) {
       const local = {...payload, id: Date.now()};
       setUsers((current) => [local, ...current]);
       setActiveUser(local.id);
+      setIngredients([]);
       notify('Usuario creado en modo demo');
       return local;
     } finally {
@@ -132,13 +151,18 @@ export function useQueCocino() {
   }
 
   async function addIngredient(payload) {
+    const userId = activeUserIdRef.current || activeUserId || activeUser?.id;
     setLoading((s) => ({...s, addIngredient: true}));
     try {
-      await api.addIngredient({...payload, usuario_id: Number(activeUserId)});
-      await loadIngredients(activeUserId);
+      if (!userId) throw new Error('No user');
+      await api.addIngredient({...payload, usuario_id: Number(userId)});
+      await loadIngredients(userId);
       notify(`${payload.nombre} guardado en tu refri`);
     } catch (error) {
-      setIngredients((current) => [{...payload, id: Date.now()}, ...current]);
+      const item = {...payload, id: Date.now(), usuario_id: Number(userId)};
+      const next = {...localPantryByUser, [userId]: [item, ...(localPantryByUser[userId] || [])]};
+      saveLocalPantry(next);
+      setIngredients(next[userId]);
       notify(`${payload.nombre} agregado en modo demo`);
     } finally {
       setLoading((s) => ({...s, addIngredient: false}));
@@ -162,7 +186,13 @@ export function useQueCocino() {
       window.setTimeout(loadNotifications, 3200);
     } catch (error) {
       const candidates = recipesForUser(recipes.length ? recipes : mockRecipes, activeUser)
-        .sort((a, b) => recipeMatch(b, ingredients).percent - recipeMatch(a, ingredients).percent);
+        .sort((a, b) => scoreRecipeForChef(b, ingredients, {
+          ...chefPreferences,
+          expiringIngredients: ingredients.filter((item) => daysUntil(item.fecha_vencimiento) <= 4)
+        }) - scoreRecipeForChef(a, ingredients, {
+          ...chefPreferences,
+          expiringIngredients: ingredients.filter((item) => daysUntil(item.fecha_vencimiento) <= 4)
+        }));
       const shortlist = candidates.slice(0, Math.min(5, candidates.length));
       const recipe = shortlist[nextSeed % shortlist.length] || candidates[0] || mockRecipes[0];
       setRecommendation({estado: 'DEMO', mensaje: `Hoy te conviene preparar ${recipe.nombre}.`, receta: recipe.nombre});
@@ -186,7 +216,7 @@ export function useQueCocino() {
   return {
     activeView, setActiveView, activeUserId, setActiveUser, activeUser,
     users, ingredients, recipes, notifications, system, loading, toast,
-    recommendation, recommendationSeed, loadNotifications, requestRecommendation, createUser,
+    recommendation, recommendationSeed, chefPreferences, setChefPreferences, loadNotifications, requestRecommendation, createUser,
     addIngredient, notify, checkHealth
   };
 }

@@ -87,6 +87,47 @@ export function recipesForUser(recipes, user) {
   return allowed.length ? [...allowed] : [...recipes];
 }
 
+export function scoreRecipeForChef(recipe, ingredients, preferences = {}) {
+  const match = recipeMatch(recipe, ingredients);
+  const text = `${recipe.nombre || ''} ${recipe.descripcion || ''} ${(recipe.etiquetas || []).join(' ')} ${recipeIngredients(recipe).join(' ')}`.toLowerCase();
+  const notes = String(preferences.notes || '').toLowerCase();
+  const expiringNames = new Set((preferences.expiringIngredients || []).map((item) => cleanIngredientName(item.nombre)));
+  let score = match.percent * 3;
+
+  if (preferences.time && Number(recipe.tiempo || 999) <= Number(preferences.time)) score += 28;
+  if (preferences.budget && Number(recipe.costo_estimado || 999) <= Number(preferences.budget)) score += 28;
+  if (preferences.avoidShopping) score += Math.max(0, 24 - match.missing.length * 8);
+  if (preferences.useExpiring) {
+    const usesExpiring = recipeIngredients(recipe).some((item) => expiringNames.has(cleanIngredientName(item)));
+    if (usesExpiring) score += 34;
+  }
+
+  const mood = preferences.mood || '';
+  if (mood === 'rapido' && Number(recipe.tiempo || 999) <= 25) score += 35;
+  if (mood === 'economico' && Number(recipe.costo_estimado || 999) <= 4) score += 35;
+  if (mood === 'ligero' && /(ensalada|sopa|verdura|vegetal|brócoli|brocoli|tomate|ligera|saludable)/.test(text)) score += 30;
+  if (mood === 'casero' && /(tortilla|arroz|papa|sopa|caser|familiar|horno)/.test(text)) score += 30;
+
+  const noteTokens = notes
+    .split(/[^a-záéíóúñü]+/i)
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 4);
+  for (const token of noteTokens) {
+    if (text.includes(token)) score += 16;
+  }
+
+  if (/sin grasa|poca grasa|ligero|ligera/.test(notes) && /(frito|frita|crema|queso|carne|lomo)/.test(text)) score -= 40;
+  if (/noche|cena/.test(notes) && Number(recipe.tiempo || 999) <= 35) score += 14;
+  if (/tomate|papa|arroz|huevo|pollo|brócoli|brocoli|zanahoria|pasta|queso/.test(notes)) {
+    const wanted = notes.match(/tomate|papa|arroz|huevo|pollo|brócoli|brocoli|zanahoria|pasta|queso/g) || [];
+    for (const item of wanted) {
+      if (text.includes(item)) score += 22;
+    }
+  }
+
+  return score;
+}
+
 export function categoryForIngredient(name = '') {
   const n = name.toLowerCase();
   if (['arroz', 'pasta'].some((x) => n.includes(x))) return 'granos';

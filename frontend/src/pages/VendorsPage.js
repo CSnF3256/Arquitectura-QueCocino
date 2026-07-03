@@ -1,6 +1,6 @@
 import { Button, EmptyState, SectionTitle } from '../components/ui.js';
 import { api } from '../services/api.js';
-import { h, ingredientIcon, recipeMatch, recipesForUser } from '../utils.js';
+import { daysUntil, h, ingredientIcon, recipeMatch, recipesForUser, scoreRecipeForChef } from '../utils.js';
 
 const {useEffect, useMemo, useState} = React;
 
@@ -22,10 +22,12 @@ export function VendorsPage({state}) {
   const [status, setStatus] = useState('idle');
   const [message, setMessage] = useState('');
   const best = useMemo(() => {
+    const expiringIngredients = state.ingredients.filter((item) => daysUntil(item.fecha_vencimiento) <= 4);
+    const preferences = {...state.chefPreferences, expiringIngredients};
     const candidates = recipesForUser(state.recipes, state.activeUser)
-      .sort((a, b) => recipeMatch(b, state.ingredients).percent - recipeMatch(a, state.ingredients).percent);
+      .sort((a, b) => scoreRecipeForChef(b, state.ingredients, preferences) - scoreRecipeForChef(a, state.ingredients, preferences));
     return candidates[state.recommendationSeed % Math.max(1, candidates.length)];
-  }, [state.recipes, state.activeUser, state.ingredients, state.recommendationSeed]);
+  }, [state.recipes, state.activeUser, state.ingredients, state.recommendationSeed, state.chefPreferences]);
   const missing = best ? recipeMatch(best, state.ingredients).missing.map((item) => item.toLowerCase()) : [];
   const visibleCatalog = catalog.length ? catalog : demoCatalog;
   const suggestedProducts = visibleCatalog.filter((item) => missing.includes(String(item.canonicalIngredient || '').toLowerCase()));
@@ -35,10 +37,14 @@ export function VendorsPage({state}) {
     try {
       const data = await api.canonicalCatalog();
       setCatalog(data);
-      setMessage(data.length ? 'Catálogo canónico cargado desde AS2 Adapter.' : 'El catálogo todavía está vacío.');
+      setMessage(data.length
+        ? 'Catálogo canónico cargado desde AS2 Adapter.'
+        : 'El catálogo real aún no tiene registros; se muestra un catálogo demo AS2 para explicar el flujo de proveedores.');
+      return data;
     } catch (error) {
       setCatalog([]);
       setMessage('AS2 Adapter no disponible; mostrando catálogo demo visual.');
+      return [];
     } finally {
       setStatus('idle');
     }
@@ -52,8 +58,10 @@ export function VendorsPage({state}) {
         messageType:'CATALOG_UPDATE',
         items: demoCatalog.map(({supplierId, ...item}) => item)
       });
-      setMessage('AS2 procesado: auditoría guardada y evento catalog.updated publicado.');
-      await loadCatalog();
+      const data = await loadCatalog();
+      setMessage(data.length
+        ? 'AS2 procesado correctamente: auditoría guardada, catálogo canónico actualizado y evento catalog.updated publicado.'
+        : 'AS2 enviado correctamente. Si el catálogo real aún aparece vacío, se mantiene el catálogo demo para la exposición del flujo B2B.');
     } catch (error) {
       setMessage('No se pudo contactar el AS2 Adapter; se conserva demo visual de proveedores.');
     } finally {
