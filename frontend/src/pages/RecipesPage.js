@@ -1,4 +1,5 @@
 import { EmptyState, SectionTitle } from '../components/ui.js';
+import { RecipePhoto } from '../components/RecipePhoto.js';
 import { h, recipeIcon, recipeMatch, recipesForUser } from '../utils.js';
 
 const {useMemo, useState} = React;
@@ -20,7 +21,7 @@ export function RecipesPage({state}) {
   return h('section', {className: 'page recipes-page'},
     h(SectionTitle, {eyebrow: 'paso 4', title: 'Recetario editorial'}, 'Explora recetas como una galería culinaria, priorizando tiempo, costo y compatibilidad con tu despensa.'),
     current ? h('article', {className: 'recipe-spotlight'},
-      h('div', {className: 'recipe-hero-icon'}, recipeIcon(current.nombre)),
+      h(RecipePhoto, {recipe: current, fallback: recipeIcon(current.nombre), className: 'spotlight-photo'}),
       h('div', null,
         h('p', {className: 'eyebrow'}, 'detalle destacado'),
         h('h2', null, current.nombre),
@@ -40,7 +41,7 @@ export function RecipesPage({state}) {
         h('div', {className: 'band-heading'}, h('h3', null, title), h('small', null, `${recipes.length} recetas`)),
         recipes.length ? h('div', {className: 'recipe-gallery'}, recipes.slice(0, 6).map((recipe) =>
           h('button', {className: 'recipe-card', key: `${title}-${recipe.id || recipe.nombre}`, onClick: () => setSelected(recipe)},
-            h('span', {className: 'food-medallion'}, recipeIcon(recipe.nombre)),
+            h(RecipePhoto, {recipe, fallback: recipeIcon(recipe.nombre), className: 'card-photo'}),
             h('strong', null, recipe.nombre),
             h('small', null, `${recipe.tiempo} min · $${recipe.costo_estimado} · ${recipe.dificultad || 'media'}`),
             h('div', {className: 'match-bar'}, h('span', {style: {width: `${recipe.match.percent}%`}})),

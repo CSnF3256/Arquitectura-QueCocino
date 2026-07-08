@@ -1,4 +1,5 @@
 import { Button, SectionTitle } from '../components/ui.js';
+import { RecipePhoto } from '../components/RecipePhoto.js';
 import { daysUntil, h, ingredientIcon, recipeIcon, recipeMatch, recipesForUser, scoreRecipeForChef } from '../utils.js';
 
 const {useMemo, useState} = React;
@@ -37,7 +38,7 @@ export function RecommendationPage({state}) {
       ),
       h('article', {className: 'recommend-result'},
         h('p', {className: 'eyebrow'}, pending ? 'solicitud pendiente' : 'mejor opción visual'),
-        h('div', {className: 'recipe-hero-icon'}, best ? recipeIcon(best.nombre) : '✨'),
+        best ? h(RecipePhoto, {recipe: best, fallback: recipeIcon(best.nombre), className: 'recommend-photo'}) : h('div', {className: 'recipe-hero-icon'}, '✨'),
         h('h2', null, state.recommendation?.receta || best?.nombre || 'Esperando recetas'),
         h('p', null, state.recommendation?.mensaje || best?.descripcion || 'Cuando el backend procese la solicitud, las notificaciones traerán el resultado.'),
         h('div', {className: 'tag-row'},

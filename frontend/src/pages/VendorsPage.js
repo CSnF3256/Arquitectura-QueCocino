@@ -1,5 +1,6 @@
 import { Button, EmptyState, SectionTitle } from '../components/ui.js';
 import { api } from '../services/api.js';
+import { getIngredientImage } from '../services/imageService.js';
 import { daysUntil, h, ingredientIcon, recipeMatch, recipesForUser, scoreRecipeForChef } from '../utils.js';
 
 const {useEffect, useMemo, useState} = React;
@@ -100,8 +101,12 @@ export function VendorsPage({state}) {
 }
 
 function ProductCard({item, featured = false}) {
+  const image = getIngredientImage(item.canonicalIngredient);
   return h('article', {className: featured ? 'product-card featured' : 'product-card'},
-    h('span', {className: 'product-icon'}, ingredientIcon(item.canonicalIngredient)),
+    h('span', {className: 'product-icon'}, image
+      ? h('img', {src: image, alt: item.canonicalIngredient, loading: 'lazy'})
+      : ingredientIcon(item.canonicalIngredient)
+    ),
     h('div', null,
       h('h4', null, item.canonicalIngredient),
       h('p', null, `${item.stock} ${item.unit} · $${Number(item.price || 0).toFixed(2)}`),

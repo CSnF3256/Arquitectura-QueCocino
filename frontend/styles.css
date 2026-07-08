@@ -497,6 +497,66 @@ input:focus,select:focus{border-color:transparent;box-shadow:0 0 0 4px rgba(120,
 .chef-summary-card li{padding:10px 12px;border-radius:14px;background:#f8f0df;color:#62503e;font-weight:800}
 .chef-note{padding:12px 14px;border-radius:16px;background:#eef6e6;color:#405c31;line-height:1.5}
 .recipe-spotlight{display:grid;grid-template-columns:140px 1fr;gap:20px;padding:24px;margin-bottom:18px}
+.recipe-photo{
+  position:relative;
+  overflow:hidden;
+  display:grid;
+  place-items:center;
+  background:radial-gradient(circle,#fff 0 35%,#fff0cf 36%,#d9753f 74%);
+  color:#fff;
+  isolation:isolate;
+}
+.recipe-photo img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+  transition:transform .35s ease;
+}
+.recipe-photo:hover img{transform:scale(1.05)}
+.recipe-photo>span{font-size:2.8rem}
+.recipe-photo small{
+  position:absolute;
+  left:10px;
+  bottom:10px;
+  z-index:2;
+  border-radius:999px;
+  padding:6px 9px;
+  background:rgba(44,35,27,.72);
+  color:#fff;
+  font-size:.66rem;
+  font-weight:900;
+  backdrop-filter:blur(8px);
+}
+.recipe-photo:after{
+  content:"";
+  position:absolute;
+  inset:auto 0 0;
+  height:45%;
+  background:linear-gradient(transparent,rgba(44,35,27,.42));
+  pointer-events:none;
+}
+.recipe-photo.loading{animation:pulsePhoto 1.2s ease-in-out infinite}
+@keyframes pulsePhoto{50%{filter:saturate(.75) brightness(1.04)}}
+.spotlight-photo{
+  width:140px;
+  min-height:140px;
+  border-radius:28px;
+  box-shadow:var(--soft-shadow);
+}
+.card-photo{
+  width:100%;
+  height:138px;
+  border-radius:18px;
+  margin-bottom:12px;
+}
+.recommend-photo{
+  width:min(240px,100%);
+  height:170px;
+  border-radius:28px;
+  margin-bottom:14px;
+  box-shadow:var(--soft-shadow);
+}
 .recipe-sections{display:grid;gap:16px}
 .recipe-band{padding:20px}
 .band-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
@@ -619,7 +679,9 @@ input:focus,select:focus{border-color:transparent;box-shadow:0 0 0 4px rgba(120,
   background:#fff;
   font-size:1.8rem;
   box-shadow:var(--soft-shadow);
+  overflow:hidden;
 }
+.product-icon img{width:100%;height:100%;object-fit:contain;padding:5px}
 .product-card h4{margin:0 0 4px;text-transform:capitalize;font-family:Fraunces,serif;font-size:1.35rem;color:#913d25}
 .product-card p{margin:0;color:#6b5642}.product-card small{color:var(--muted)}
 .toast{
@@ -643,6 +705,7 @@ input:focus,select:focus{border-color:transparent;box-shadow:0 0 0 4px rgba(120,
   .hero-copy h1{font-size:3rem}
   .kitchen-illustration{display:none}
   .stats-grid,.form-grid,.owned-missing,.recipe-spotlight{grid-template-columns:1fr}
+  .spotlight-photo{width:100%;height:210px}
   .journey-nav nav{grid-auto-columns:152px}
   .journey-step{grid-template-columns:26px 28px 1fr;padding:8px}
   .digital-fridge{min-height:auto}
