@@ -112,6 +112,9 @@ def actualizar_preferencias(usuario_id:int, u: Usuario):
 def agregar_item(item: ItemDespensa):
     fecha_vencimiento = item.fecha_vencimiento or None
     with conn() as c, c.cursor() as cur:
+        cur.execute("SELECT id FROM usuarios WHERE id=%s", (item.usuario_id,))
+        if not cur.fetchone():
+            raise HTTPException(404, "Usuario no existe para registrar despensa")
         cur.execute("""INSERT INTO despensa(usuario_id,nombre,cantidad,unidad,fecha_vencimiento)
             VALUES (%s,%s,%s,%s,%s) RETURNING id""", (item.usuario_id,item.nombre.lower(),item.cantidad,item.unidad,fecha_vencimiento))
         item_id = cur.fetchone()[0]

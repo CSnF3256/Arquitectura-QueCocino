@@ -1,149 +1,239 @@
-# QueCocino - Implementación académica
+# QueCocino - Ecosistema de cocina inteligente
 
-Ecosistema mínimo funcional para cumplir arquitectura con microservicios, bases de datos Docker, RabbitMQ, Redis, API Gateway REST + Swagger y Lambda/server function simulada.
+QueCocino es una aplicacion academica de arquitectura de software basada en microservicios. Permite crear usuarios, registrar ingredientes en una despensa/refri digital, consultar recetas, pedir una recomendacion inteligente, recibir notificaciones y simular integracion B2B con proveedores mediante AS2.
 
-## Arquitectura implementada
-
-- `api-gateway`: entrada única REST y documentación Swagger en `http://localhost:8000/docs`.
-- `servicio-usuario`: perfil, preferencias y despensa. Usa `postgres-usuarios`.
-- `servicio-recetas`: catálogo de recetas semilla. Usa `postgres-recetas`.
-- `servicio-menu`: solicita recomendación diaria, usa Redis y publica evento en RabbitMQ.
-- `lambda-recomendador`: función serverless simulada. Consume evento RabbitMQ y ejecuta `lambda_handler`.
-- `servicio-notificaciones`: consume recomendación generada y registra notificación en consola/memoria.
-- `as2-adapter`: integración B2B académica. Recibe `POST /as2/inbound`, genera MDN simulado, guarda auditoría en `postgres-integracion` y publica `catalog.updated` en RabbitMQ.
-- Datos: PostgreSQL usuarios, PostgreSQL recetas, PostgreSQL integración simulada, Redis y RabbitMQ, todos en Docker.
+El proyecto incluye frontend web, API Gateway, servicios de dominio, bases PostgreSQL, Redis, RabbitMQ, Prometheus y una funcion recomendadora ejecutada con runtime local de AWS Lambda.
 
 ## Requisitos
 
-- Docker Desktop abierto.
+- Docker Desktop instalado y abierto.
 - Docker Compose v2.
+- Puertos disponibles: `3000`, `8000`, `8001`, `8002`, `8003`, `8004`, `8090`, `9090`, `15672`, `5433`, `5434`, `5435`, `6379`, `5672`.
 
-## Ejecutar
+## Levantar el proyecto
 
-```bash
-cd quecocino-ecosistema
-cd infra
-docker compose up --build
+Desde la raiz del repositorio:
+
+```powershell
+docker compose -f infra\docker-compose.yml up -d --build
 ```
 
-Espera 30 a 60 segundos hasta que todos los servicios arranquen.
+En Linux/macOS:
 
-## URLs importantes
+```bash
+docker compose -f infra/docker-compose.yml up -d --build
+```
 
-- API Gateway + Swagger: http://localhost:8000/docs
-- Health general: http://localhost:8000/health
-- RabbitMQ Management: http://localhost:15672  usuario: `guest`, clave: `guest`
+La primera vez puede tardar porque descarga imagenes de Docker, incluyendo la imagen oficial del runtime Lambda:
+
+```text
+public.ecr.aws/lambda/python:3.12
+```
+
+Verifica que los contenedores esten arriba:
+
+```powershell
+docker compose -f infra\docker-compose.yml ps
+```
+
+## Abrir la aplicacion
+
+- Frontend: http://localhost:3000
+- API Gateway health: http://localhost:8000/health
+- Swagger local: http://localhost:8000/docs
+- RabbitMQ Management: http://localhost:15672
+  - usuario: `guest`
+  - clave: `guest`
 - Prometheus: http://localhost:9090
-- Frontend gourmet responsive: http://localhost:3000
-- SwaggerHub publicado: https://app.swaggerhub.com/apis/personal-09e/quecocino-api/1.0.0
 
-## Prueba funcional rápida
+## Arquitectura implementada
 
-1. Crear usuario:
+- `frontend`: interfaz web de QueCocino.
+- `api-gateway`: entrada REST centralizada en `http://localhost:8000`.
+- `servicio-usuario`: usuarios, preferencias y despensa.
+- `servicio-recetas`: catalogo de recetas.
+- `servicio-menu`: solicitud de recomendacion y publicacion de eventos.
+- `lambda-recomendador`: funcion serverless local con runtime AWS Lambda.
+- `lambda-event-source`: mapeo local de eventos RabbitMQ -> Lambda Runtime.
+- `servicio-notificaciones`: consume recomendaciones generadas.
+- `as2-adapter`: integracion B2B AS2 academica.
+- `postgres-usuarios`, `postgres-recetas`, `postgres-integracion`: capas de datos en Docker.
+- `redis`: cache.
+- `rabbitmq`: mensajeria.
+- `prometheus`: monitoreo.
 
-```bash
-curl -X POST http://localhost:8000/usuarios \
-  -H "Content-Type: application/json" \
-  -d '{"nombre":"Ana","email":"ana@demo.com","tipo_dieta":"normal","alergias":"","tiempo_disponible":30,"presupuesto":5}'
+## Flujo recomendado de demo
+
+1. Abre `http://localhost:3000`.
+2. Entra a **Usuarios** y crea o selecciona un usuario.
+3. Entra a **Mi Refri** y agrega ingredientes.
+4. Revisa **Recetario**.
+5. Entra a **Mi Chef** y ajusta preferencias.
+6. Entra a **Recomendacion** y pide una receta.
+7. Revisa **Notificaciones**.
+8. Entra a **Proveedores AS2** y prueba:
+   - `Enviar catalogo demo AS2`
+   - `Ver catalogo canonico`
+9. Entra a **Sistema** para mostrar el estado del ecosistema.
+
+## Lambda serverless local
+
+El recomendador esta implementado como funcion en:
+
+```text
+lambda-recomendador/handler.py
 ```
 
-2. Agregar ingredientes:
+Docker ejecuta esa funcion con la imagen oficial de AWS Lambda:
 
-```bash
-curl -X POST http://localhost:8000/despensa/items \
-  -H "Content-Type: application/json" \
-  -d '{"usuario_id":1,"nombre":"arroz","cantidad":1,"unidad":"kg","fecha_vencimiento":"2026-07-01"}'
-
-curl -X POST http://localhost:8000/despensa/items \
-  -H "Content-Type: application/json" \
-  -d '{"usuario_id":1,"nombre":"pollo","cantidad":1,"unidad":"kg","fecha_vencimiento":"2026-07-01"}'
+```text
+public.ecr.aws/lambda/python:3.12
 ```
 
-3. Consultar recetas:
+El contenedor `lambda-recomendador` expone el runtime Lambda local en:
 
-```bash
+```text
+/2015-03-31/functions/function/invocations
+```
+
+El contenedor `lambda-event-source` consume eventos de RabbitMQ desde:
+
+```text
+recommendation.requested
+```
+
+Luego invoca la Lambda por HTTP y publica el resultado en:
+
+```text
+recommendation.generated
+```
+
+Para ver los logs del runtime Lambda:
+
+```powershell
+docker compose -f infra\docker-compose.yml logs -f lambda-recomendador lambda-event-source
+```
+
+En una invocacion correcta veras lineas similares a:
+
+```text
+INIT START
+INVOKE START
+END
+REPORT
+```
+
+El archivo `lambda-recomendador/serverless.yml` queda como referencia para un despliegue objetivo en AWS con SQS.
+
+## Pruebas rapidas por API
+
+### Health general
+
+```powershell
+curl http://localhost:8000/health
+```
+
+### Crear usuario
+
+```powershell
+curl -X POST http://localhost:8000/usuarios `
+  -H "Content-Type: application/json" `
+  -d "{\"nombre\":\"Sebastian\",\"email\":\"sebastian@demo.com\",\"tipo_dieta\":\"normal\",\"alergias\":\"\",\"tiempo_disponible\":30,\"presupuesto\":5}"
+```
+
+### Agregar ingrediente
+
+```powershell
+curl -X POST http://localhost:8000/despensa/items `
+  -H "Content-Type: application/json" `
+  -d "{\"usuario_id\":1,\"nombre\":\"arroz\",\"cantidad\":1,\"unidad\":\"kg\",\"fecha_vencimiento\":null}"
+```
+
+### Quitar ingrediente
+
+```powershell
+curl -X DELETE http://localhost:8000/despensa/items/1
+```
+
+### Consultar recetas
+
+```powershell
 curl http://localhost:8000/recetas
 ```
 
-4. Solicitar recomendación:
+### Solicitar recomendacion
 
-```bash
-curl -X POST http://localhost:8000/menu/recomendacion \
-  -H "Content-Type: application/json" \
-  -d '{"usuario_id":1}'
+```powershell
+curl -X POST http://localhost:8000/menu/recomendacion `
+  -H "Content-Type: application/json" `
+  -d "{\"usuario_id\":1}"
 ```
 
-5. Consultar notificaciones generadas:
+### Ver notificaciones
 
-```bash
+```powershell
 curl http://localhost:8000/notificaciones
 ```
 
+## Prueba AS2
 
+Enviar catalogo demo de proveedor:
 
-## Interfaz web responsive
+```powershell
+curl -X POST http://localhost:8000/as2/inbound `
+  -H "Content-Type: application/json" `
+  -H "AS2-From: SUP-001" `
+  -H "AS2-To: QUECOCINO" `
+  -H "Message-ID: SUP-001-DEMO-001" `
+  -d "{\"supplierId\":\"SUP-001\",\"messageType\":\"CATALOG_UPDATE\",\"items\":[{\"externalProductCode\":\"ARZ-LG-001\",\"canonicalIngredient\":\"arroz\",\"category\":\"cereal\",\"unit\":\"kg\",\"price\":1.25,\"stock\":500}]}"
+```
 
-La solución incluye una interfaz web/mobile-first en el contenedor `frontend`. Después de levantar Docker Compose, abre:
+Consultar catalogo canonico:
 
-- Frontend: http://localhost:3000
-- API Gateway / Swagger: http://localhost:8000/docs
-- RabbitMQ Management: http://localhost:15672 con usuario `guest` y clave `guest`
+```powershell
+curl http://localhost:8000/catalog/canonical
+```
 
-Flujo recomendado para la captura:
-1. Abrir `http://localhost:3000`.
-2. Presionar **Crear demo rápido**.
-3. Verificar que se crea usuario, despensa, recomendación y notificación.
-4. Tomar captura de la app responsive y de RabbitMQ con las colas.
+## Documentacion OpenAPI
 
-## Documentación OpenAPI para SwaggerHub
-
-El contrato oficial para publicación en SwaggerHub está en:
+Contrato local:
 
 ```text
 docs/openapi.yaml
 ```
 
-Pasos para publicarlo:
-
-1. Entrar a `https://app.swaggerhub.com`.
-2. Crear una API nueva con la opción **Import and Document API**.
-3. Subir el archivo `docs/openapi.yaml`.
-4. Usar nombre `quecocino-api` y versión `1.0.0`.
-5. Copiar la URL pública de SwaggerHub y reemplazar este marcador:
-
-```text
-URL SwaggerHub: https://app.swaggerhub.com/apis/personal-09e/quecocino-api/1.0.0
-```
-
-También se mantiene Swagger local generado por el API Gateway en:
+Swagger local:
 
 ```text
 http://localhost:8000/docs
 ```
 
-## Nota sobre Lambda simulada vs despliegue real
-
-En el entorno local académico, la función `lambda-recomendador` se ejecuta como contenedor Docker y consume eventos desde RabbitMQ. Esto permite demostrar el patrón serverless sin usar servicios pagos. La función real está separada en `lambda-recomendador/handler.py` mediante `lambda_handler(event, context)`, por lo que puede migrarse a AWS Lambda.
-
-Para un despliegue AWS objetivo, RabbitMQ se reemplazaría por SQS y la función se activaría por eventos de cola. El archivo `lambda-recomendador/serverless.yml` sirve como base para ese despliegue.
-
-
-## Prueba del AS2 Adapter
-
-```bash
-curl -X POST http://localhost:8000/as2/inbound   -H "Content-Type: application/json"   -H "AS2-From: SUP-001"   -H "AS2-To: QUECOCINO"   -H "Message-ID: SUP-001-DEMO-001"   -d '{"supplierId":"SUP-001","messageType":"CATALOG_UPDATE","items":[{"externalProductCode":"ARZ-LG-001","canonicalIngredient":"arroz","category":"cereal","unit":"kg","price":1.25,"stock":500,"validFrom":"2026-06-24","validTo":"2026-07-30"}]}'
-```
-
-Consultar catálogo canónico:
-
-```bash
-curl http://localhost:8000/catalog/canonical
-```
-
-
-URL de monitoreo local:
+SwaggerHub publicado:
 
 ```text
-http://localhost:9090
+https://app.swaggerhub.com/apis/personal-09e/quecocino-api/1.0.0
 ```
 
+## Apagar el proyecto
+
+```powershell
+docker compose -f infra\docker-compose.yml down
+```
+
+Para borrar tambien los volumenes de base de datos:
+
+```powershell
+docker compose -f infra\docker-compose.yml down -v
+```
+
+Usa `down -v` solo si quieres reiniciar datos desde cero.
+
+## Notas de datos demo
+
+El seed de usuarios crea perfiles demo reales en PostgreSQL:
+
+- Ana Torres
+- Luis Mendez
+- Camila Ruiz
+
+Esto evita que el frontend use perfiles visuales sin respaldo en la base de datos.

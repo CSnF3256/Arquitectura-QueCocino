@@ -17,3 +17,9 @@ CREATE TABLE IF NOT EXISTS despensa (
 );
 CREATE INDEX IF NOT EXISTS idx_despensa_usuario ON despensa(usuario_id);
 CREATE INDEX IF NOT EXISTS idx_despensa_nombre ON despensa(nombre);
+
+INSERT INTO usuarios(nombre,email,tipo_dieta,alergias,tiempo_disponible,presupuesto) VALUES
+('Ana Torres', 'ana@demo.com', 'normal', 'ninguna', 30, 5.00),
+('Luis Méndez', 'luis@demo.com', 'vegetariano', 'mariscos', 20, 4.00),
+('Camila Ruiz', 'camila@demo.com', 'sin lactosa', 'lactosa', 45, 6.00)
+ON CONFLICT(email) DO NOTHING;

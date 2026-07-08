@@ -112,6 +112,22 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ItemDespensa' }
+  /despensa/items/{item_id}:
+    delete:
+      tags: [Despensa]
+      summary: Elimina un ingrediente de la despensa
+      parameters:
+        - name: item_id
+          in: path
+          required: true
+          schema: { type: integer, example: 10 }
+      responses:
+        '200':
+          description: Ingrediente eliminado e invalidacion de cache
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EstadoOperacion' }
+        '404': { description: Ingrediente no existe }
   /despensa/usuarios/{id}:
     get:
       tags: [Despensa]

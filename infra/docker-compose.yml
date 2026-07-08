@@ -73,9 +73,26 @@ services:
 
   lambda-recomendador:
     build: ../lambda-recomendador
+    depends_on: [rabbitmq]
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import socket; s=socket.create_connection(('localhost',8080),2); s.close()\""]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+
+  lambda-event-source:
+    build:
+      context: ../lambda-recomendador
+      dockerfile: Dockerfile.invoker
     environment:
       RABBITMQ_HOST: rabbitmq
-    depends_on: [rabbitmq]
+      LAMBDA_RUNTIME_URL: http://lambda-recomendador:8080/2015-03-31/functions/function/invocations
+    depends_on:
+      rabbitmq:
+        condition: service_started
+      lambda-recomendador:
+        condition: service_healthy
 
   servicio-notificaciones:
     build: ../servicio-notificaciones

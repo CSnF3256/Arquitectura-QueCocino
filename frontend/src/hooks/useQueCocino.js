@@ -41,8 +41,20 @@ export function useQueCocino() {
     setLoading((s) => ({...s, users: true}));
     try {
       const data = await api.users();
-      setUsers(data.length ? data : mockUsers);
-      if (!activeUserId && data[0]?.id) setActiveUser(String(data[0].id));
+      if (data.length) {
+        setUsers(data);
+        const activeExists = data.some((user) => String(user.id) === String(activeUserId));
+        if ((!activeUserId || !activeExists) && data[0]?.id) setActiveUser(String(data[0].id));
+        return;
+      }
+      const createdUsers = [];
+      for (const demoUser of mockUsers) {
+        const {id, ...payload} = demoUser;
+        createdUsers.push(await api.createUser(payload));
+      }
+      setUsers(createdUsers);
+      const activeExists = createdUsers.some((user) => String(user.id) === String(activeUserId));
+      if ((!activeUserId || !activeExists) && createdUsers[0]?.id) setActiveUser(String(createdUsers[0].id));
     } catch (error) {
       setUsers(mockUsers);
       setSystem((s) => ({...s, fallback: true}));
@@ -150,17 +162,53 @@ export function useQueCocino() {
     }
   }
 
+  async function ensureBackendUser(user) {
+    if (!user) throw new Error('No user');
+    try {
+      await api.user(user.id);
+      return user;
+    } catch (error) {
+      const payload = {
+        nombre: user.nombre,
+        email: user.email || `${String(user.nombre || 'usuario').toLowerCase().replace(/[^a-z0-9]+/g, '.')}@demo.local`,
+        tipo_dieta: user.tipo_dieta || 'normal',
+        alergias: user.alergias || '',
+        presupuesto: Number(user.presupuesto || 5),
+        tiempo_disponible: Number(user.tiempo_disponible || 30)
+      };
+      const existingUsers = await api.users();
+      const existing = existingUsers.find((item) => String(item.email || '').toLowerCase() === payload.email.toLowerCase());
+      if (existing) {
+        setUsers((current) => [
+          existing,
+          ...current.filter((item) => String(item.id) !== String(user.id) && String(item.id) !== String(existing.id))
+        ]);
+        setActiveUser(existing.id);
+        return existing;
+      }
+      const created = await api.createUser(payload);
+      const completeUser = {...payload, ...created};
+      setUsers((current) => [
+        completeUser,
+        ...current.filter((item) => String(item.id) !== String(user.id) && String(item.email) !== String(completeUser.email))
+      ]);
+      setActiveUser(created.id);
+      notify(`${created.nombre || payload.nombre} conectado a la base real`);
+      return completeUser;
+    }
+  }
+
   async function addIngredient(payload) {
-    const userId = activeUserIdRef.current || activeUserId || activeUser?.id;
-    const normalizedPayload = {
-      ...payload,
-      usuario_id: Number(userId),
-      cantidad: Number(payload.cantidad || 1),
-      fecha_vencimiento: payload.fecha_vencimiento || null
-    };
     setLoading((s) => ({...s, addIngredient: true}));
     try {
-      if (!userId) throw new Error('No user');
+      const realUser = await ensureBackendUser(activeUser);
+      const userId = realUser.id;
+      const normalizedPayload = {
+        ...payload,
+        usuario_id: Number(userId),
+        cantidad: Number(payload.cantidad || 1),
+        fecha_vencimiento: payload.fecha_vencimiento || null
+      };
       const created = await api.addIngredient(normalizedPayload);
       setIngredients((current) => [...current, created]);
       loadIngredients(userId);
