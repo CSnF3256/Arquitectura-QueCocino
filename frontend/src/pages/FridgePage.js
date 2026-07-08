@@ -41,7 +41,7 @@ export function FridgePage({state}) {
       h('div', {className: cx('digital-fridge fridge-appliance', open && 'open')},
         h('button', {className: 'fridge-door-visual', type: 'button', onClick: () => setOpen(!open), 'aria-label': open ? 'Cerrar refrigeradora' : 'Abrir refrigeradora'},
           h('span', {className: 'fridge-logo'}, 'QC'),
-          h('span', {className: 'fridge-magnet tomato'}, '🍅'),
+          h('span', {className: 'fridge-magnet tomato'}, 'tomate'),
           h('span', {className: 'fridge-magnet note'}, 'hoy'),
           h('span', {className: 'fridge-handle-visual'}),
           h('small', null, open ? 'clic para cerrar' : 'clic para abrir')
@@ -57,7 +57,14 @@ export function FridgePage({state}) {
                   h('strong', null, item.nombre),
                   h('small', null, `${item.cantidad} ${item.unidad || 'unidad'}`)
                 ),
-                h('em', null, item.fecha_vencimiento ? `${daysUntil(item.fecha_vencimiento)} días` : 'sin fecha')
+                h('em', null, item.fecha_vencimiento ? `${daysUntil(item.fecha_vencimiento)} dias` : 'sin fecha'),
+                h('button', {
+                  className: 'remove-ingredient',
+                  type: 'button',
+                  title: `Quitar ${item.nombre}`,
+                  disabled: state.loading.removeIngredient === item.id,
+                  onClick: () => state.removeIngredient(item)
+                }, 'x')
               );
             })
           )
@@ -67,12 +74,12 @@ export function FridgePage({state}) {
         h(Button, {type: 'button', variant: 'soft', onClick: () => setOpen(!open)}, open ? 'Cerrar refrigeradora' : 'Abrir refrigeradora'),
         h('article', {className: 'expiry-alert'},
           h('p', {className: 'eyebrow'}, 'alertas frescas'),
-          h('h3', null, 'Próximos a vencer'),
+          h('h3', null, 'Proximos a vencer'),
           expiring.length ? expiring.map((item) =>
             h('div', {className: 'expiry-row', key: `alert-${item.id || item.nombre}`},
               h('span', null, ingredientIcon(item.nombre)),
               h('b', null, item.nombre),
-              h('small', null, `${daysUntil(item.fecha_vencimiento)} días`)
+              h('small', null, `${daysUntil(item.fecha_vencimiento)} dias`)
             )
           ) : h('p', {className: 'muted'}, 'No hay vencimientos urgentes.')
         ),

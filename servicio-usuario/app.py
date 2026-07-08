@@ -110,12 +110,13 @@ def actualizar_preferencias(usuario_id:int, u: Usuario):
 
 @app.post("/despensa/items")
 def agregar_item(item: ItemDespensa):
+    fecha_vencimiento = item.fecha_vencimiento or None
     with conn() as c, c.cursor() as cur:
         cur.execute("""INSERT INTO despensa(usuario_id,nombre,cantidad,unidad,fecha_vencimiento)
-            VALUES (%s,%s,%s,%s,%s) RETURNING id""", (item.usuario_id,item.nombre.lower(),item.cantidad,item.unidad,item.fecha_vencimiento))
+            VALUES (%s,%s,%s,%s,%s) RETURNING id""", (item.usuario_id,item.nombre.lower(),item.cantidad,item.unidad,fecha_vencimiento))
         item_id = cur.fetchone()[0]
     cache_delete(f"user:{item.usuario_id}:pantry")
-    return {"id": item_id, **item.model_dump(), "cache":"PANTRY_INVALIDATED"}
+    return {"id": item_id, **item.model_dump(), "fecha_vencimiento": fecha_vencimiento, "cache":"PANTRY_INVALIDATED"}
 
 @app.get("/despensa/usuarios/{usuario_id}")
 def listar_despensa(usuario_id:int):
@@ -128,6 +129,16 @@ def listar_despensa(usuario_id:int):
         items = [{"id":r[0],"nombre":r[1],"cantidad":float(r[2]),"unidad":r[3],"fecha_vencimiento":str(r[4]) if r[4] else None} for r in cur.fetchall()]
         cache_set(key, items, 600)
         return {"cache":"MISS", "items":items}
+
+@app.delete("/despensa/items/{item_id}")
+def eliminar_item(item_id:int):
+    with conn() as c, c.cursor() as cur:
+        cur.execute("DELETE FROM despensa WHERE id=%s RETURNING usuario_id,nombre", (item_id,))
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(404, "Ingrediente no existe")
+    cache_delete(f"user:{row[0]}:pantry")
+    return {"estado":"ingrediente eliminado", "id": item_id, "usuario_id": row[0], "nombre": row[1], "cache":"PANTRY_INVALIDATED"}
 
 if __name__ == "__main__":
     import uvicorn

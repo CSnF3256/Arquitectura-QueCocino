@@ -1,13 +1,15 @@
 export const API_BASE_URL = 'http://localhost:8000';
 
 async function request(path, options = {}) {
+  const {headers = {}, ...fetchOptions} = options;
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {'Content-Type': 'application/json', ...(options.headers || {})},
-    ...options
+    ...fetchOptions,
+    headers: {'Content-Type': 'application/json', ...headers}
   });
 
   if (!response.ok) {
-    throw new Error(`Gateway respondió ${response.status}`);
+    const detail = await response.text().catch(() => '');
+    throw new Error(`Gateway respondió ${response.status}${detail ? `: ${detail}` : ''}`);
   }
 
   return response.json();
@@ -20,6 +22,7 @@ export const api = {
   createUser: (payload) => request('/usuarios', {method: 'POST', body: JSON.stringify(payload)}),
   pantry: (userId) => request(`/despensa/usuarios/${userId}`),
   addIngredient: (payload) => request('/despensa/items', {method: 'POST', body: JSON.stringify(payload)}),
+  removeIngredient: (id) => request(`/despensa/items/${id}`, {method: 'DELETE'}),
   recipes: () => request('/recetas'),
   recommend: (userId) => request('/menu/recomendacion', {method: 'POST', body: JSON.stringify({usuario_id: Number(userId)})}),
   notifications: () => request('/notificaciones'),

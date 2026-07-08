@@ -85,7 +85,15 @@ async def receive_as2(
         db_message_id = cur.fetchone()[0]
         for item in msg.items:
             cur.execute("""INSERT INTO catalogo_vigente(supplier_id,external_product_code,canonical_ingredient,category,unit,price,stock,valid_from,valid_to)
-                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                           ON CONFLICT(supplier_id, external_product_code)
+                           DO UPDATE SET canonical_ingredient=EXCLUDED.canonical_ingredient,
+                                         category=EXCLUDED.category,
+                                         unit=EXCLUDED.unit,
+                                         price=EXCLUDED.price,
+                                         stock=EXCLUDED.stock,
+                                         valid_from=EXCLUDED.valid_from,
+                                         valid_to=EXCLUDED.valid_to""",
                         (msg.supplierId,item.externalProductCode,item.canonicalIngredient.lower(),item.category,item.unit,item.price,item.stock,item.validFrom,item.validTo))
         cur.execute("UPDATE mensaje_as2 SET estado='PROCESADO', mdn_status='PROCESSED' WHERE id=%s", (db_message_id,))
     publish("catalog.updated", {"event":"CatalogoProveedorActualizado", "supplierId":msg.supplierId, "messageId":message_id, "items":len(msg.items)})

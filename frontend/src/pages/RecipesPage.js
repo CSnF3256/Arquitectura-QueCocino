@@ -1,6 +1,6 @@
 import { EmptyState, SectionTitle } from '../components/ui.js';
 import { RecipePhoto } from '../components/RecipePhoto.js';
-import { h, recipeIcon, recipeMatch, recipesForUser } from '../utils.js';
+import { h, recipeIcon, recipeIngredients, recipeMatch, recipesForUser } from '../utils.js';
 
 const {useMemo, useState} = React;
 
@@ -8,11 +8,17 @@ export function RecipesPage({state}) {
   const [selected, setSelected] = useState(null);
   const visibleRecipes = useMemo(() => recipesForUser(state.recipes, state.activeUser), [state.recipes, state.activeUser]);
   const enriched = useMemo(() => visibleRecipes.map((recipe) => ({...recipe, match: recipeMatch(recipe, state.ingredients)})), [visibleRecipes, state.ingredients]);
+  const isHealthy = (recipe) => {
+    const text = `${recipe.nombre || ''} ${recipe.descripcion || ''} ${(recipe.etiquetas || []).join(' ')} ${recipeIngredients(recipe).join(' ')}`.toLowerCase();
+    const healthyWords = /(salud|liger|ensalada|sopa|verdura|vegetal|brócoli|brocoli|zanahoria|tomate|avena|quinua|garbanzo|lenteja|espinaca|calabac|pepino|bowl)/;
+    const heavyWords = /(frito|frita|tocino|chorizo|mantequilla|crema|queso|lomo|carne)/;
+    return healthyWords.test(text) && !heavyWords.test(text);
+  };
   const groups = [
     ['Con lo que tienes', enriched.filter((recipe) => recipe.match.percent >= 70)],
     ['Rápidas', enriched.filter((recipe) => Number(recipe.tiempo) <= 25)],
     ['Económicas', enriched.filter((recipe) => Number(recipe.costo_estimado) <= 4)],
-    ['Saludables', enriched.filter((recipe) => (recipe.etiquetas || []).join(' ').toLowerCase().includes('salud'))],
+    ['Saludables', enriched.filter(isHealthy)],
     ['Para hoy', enriched.filter((recipe) => (recipe.etiquetas || []).join(' ').toLowerCase().includes('hoy') || recipe.match.percent >= 50)]
   ];
   const selectedVisible = selected && enriched.some((recipe) => String(recipe.id || recipe.nombre) === String(selected.id || selected.nombre));

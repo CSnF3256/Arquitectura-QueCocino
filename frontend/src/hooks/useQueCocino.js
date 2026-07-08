@@ -152,20 +152,40 @@ export function useQueCocino() {
 
   async function addIngredient(payload) {
     const userId = activeUserIdRef.current || activeUserId || activeUser?.id;
+    const normalizedPayload = {
+      ...payload,
+      usuario_id: Number(userId),
+      cantidad: Number(payload.cantidad || 1),
+      fecha_vencimiento: payload.fecha_vencimiento || null
+    };
     setLoading((s) => ({...s, addIngredient: true}));
     try {
       if (!userId) throw new Error('No user');
-      await api.addIngredient({...payload, usuario_id: Number(userId)});
-      await loadIngredients(userId);
-      notify(`${payload.nombre} guardado en tu refri`);
+      const created = await api.addIngredient(normalizedPayload);
+      setIngredients((current) => [...current, created]);
+      loadIngredients(userId);
+      notify(`${normalizedPayload.nombre} guardado en tu refri`);
     } catch (error) {
-      const item = {...payload, id: Date.now(), usuario_id: Number(userId)};
-      const next = {...localPantryByUser, [userId]: [item, ...(localPantryByUser[userId] || [])]};
-      saveLocalPantry(next);
-      setIngredients(next[userId]);
-      notify(`${payload.nombre} agregado en modo demo`);
+      notify(`No se pudo guardar ${payload.nombre}: ${error.message}`);
     } finally {
       setLoading((s) => ({...s, addIngredient: false}));
+    }
+  }
+
+  async function removeIngredient(item) {
+    if (!item?.id) {
+      notify('Este ingrediente no tiene id para eliminar');
+      return;
+    }
+    setLoading((s) => ({...s, removeIngredient: item.id}));
+    try {
+      await api.removeIngredient(item.id);
+      setIngredients((current) => current.filter((ingredient) => String(ingredient.id) !== String(item.id)));
+      notify(`${item.nombre} salió de tu refri`);
+    } catch (error) {
+      notify(`No se pudo quitar ${item.nombre}: ${error.message}`);
+    } finally {
+      setLoading((s) => ({...s, removeIngredient: false}));
     }
   }
 
@@ -217,6 +237,6 @@ export function useQueCocino() {
     activeView, setActiveView, activeUserId, setActiveUser, activeUser,
     users, ingredients, recipes, notifications, system, loading, toast,
     recommendation, recommendationSeed, chefPreferences, setChefPreferences, loadNotifications, requestRecommendation, createUser,
-    addIngredient, notify, checkHealth
+    addIngredient, removeIngredient, notify, checkHealth
   };
 }

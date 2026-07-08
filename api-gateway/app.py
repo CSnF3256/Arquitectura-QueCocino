@@ -1,6 +1,6 @@
 import os
 import httpx
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 
@@ -39,10 +39,11 @@ async def proxy(service_key: str, path: str, request: Request):
     headers.setdefault("content-type", "application/json")
     async with httpx.AsyncClient(timeout=15) as client:
         response = await client.request(request.method, url, content=body, headers=headers, params=request.query_params)
-    try:
-        return response.json()
-    except Exception:
-        return {"status_code": response.status_code, "text": response.text}
+    return Response(
+        content=response.content,
+        status_code=response.status_code,
+        media_type=response.headers.get("content-type", "application/json"),
+    )
 
 @app.get("/health")
 async def health():

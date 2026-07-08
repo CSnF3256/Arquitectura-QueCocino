@@ -22,6 +22,7 @@ export function VendorsPage({state}) {
   const [catalog, setCatalog] = useState([]);
   const [status, setStatus] = useState('idle');
   const [message, setMessage] = useState('');
+  const [lastMdn, setLastMdn] = useState(null);
   const best = useMemo(() => {
     const expiringIngredients = state.ingredients.filter((item) => daysUntil(item.fecha_vencimiento) <= 4);
     const preferences = {...state.chefPreferences, expiringIngredients};
@@ -54,17 +55,18 @@ export function VendorsPage({state}) {
   async function sendDemo() {
     setStatus('sending');
     try {
-      await api.sendAs2Catalog({
+      const mdn = await api.sendAs2Catalog({
         supplierId:'SUP-001',
         messageType:'CATALOG_UPDATE',
         items: demoCatalog.map(({supplierId, ...item}) => item)
       });
+      setLastMdn(mdn);
       const data = await loadCatalog();
       setMessage(data.length
         ? 'AS2 procesado correctamente: auditoría guardada, catálogo canónico actualizado y evento catalog.updated publicado.'
         : 'AS2 enviado correctamente. Si el catálogo real aún aparece vacío, se mantiene el catálogo demo para la exposición del flujo B2B.');
     } catch (error) {
-      setMessage('No se pudo contactar el AS2 Adapter; se conserva demo visual de proveedores.');
+      setMessage(`No se pudo enviar el catálogo AS2: ${error.message}. El catálogo canónico sigue disponible para consulta.`);
     } finally {
       setStatus('idle');
     }
@@ -86,6 +88,13 @@ export function VendorsPage({state}) {
       )
     ),
     message ? h('div', {className: 'as2-status'}, h('b', null, 'Estado AS2'), h('span', null, message)) : null,
+    lastMdn ? h('article', {className: 'as2-trace'},
+      h('div', null, h('span', null, 'MDN'), h('strong', null, lastMdn.mdn || 'PROCESSED')),
+      h('div', null, h('span', null, 'Message-ID'), h('strong', null, lastMdn.messageId || 'generado')),
+      h('div', null, h('span', null, 'AS2-From'), h('strong', null, lastMdn.as2From || 'SUP-001')),
+      h('div', null, h('span', null, 'AS2-To'), h('strong', null, lastMdn.as2To || 'QUECOCINO')),
+      h('div', null, h('span', null, 'Checksum'), h('strong', null, String(lastMdn.checksum || '').slice(0, 18) + '...'))
+    ) : null,
     h('div', {className: 'vendors-layout'},
       h('article', {className: 'vendor-panel'},
         h('div', {className: 'band-heading'}, h('h3', null, 'Productos sugeridos para faltantes'), h('small', null, `${suggestedProducts.length} coincidencias`)),

@@ -28,3 +28,4 @@ CREATE TABLE IF NOT EXISTS catalogo_vigente (
 INSERT INTO proveedor(nombre, as2_id, activo) VALUES ('Proveedor Demo', 'SUP-001', true) ON CONFLICT DO NOTHING;
 CREATE INDEX IF NOT EXISTS idx_catalogo_supplier ON catalogo_vigente(supplier_id);
 CREATE INDEX IF NOT EXISTS idx_catalogo_ingredient ON catalogo_vigente(canonical_ingredient);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_catalogo_supplier_product ON catalogo_vigente(supplier_id, external_product_code);
